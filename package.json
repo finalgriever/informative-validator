@@ -1,6 +1,6 @@
 {
   "name": "vgs-informative-validator",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "Makes building robust validator directives easier",
   "main": "index.js",
   "typings": "./informative-validator.d.ts",

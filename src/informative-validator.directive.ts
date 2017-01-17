@@ -1,5 +1,5 @@
 import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input } from '@angular/core';
-import { AbstractControl } from '@angular/forms';
+import { AbstractControl, NgControl } from '@angular/forms';
 
 import { SynchronousValidationRule, AsynchronousValidationRule,
          SynchronousValidationRuleSet, AsynchronousValidationRuleSet } from './informative-validator-rules';
@@ -11,17 +11,16 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     private _inputElement: any;
     private _descriptionElement: any;
     private _feedbackElement: any;
-    private _initialised: boolean = false;
     private _valid: boolean = false;
 
     // The client component can either build a list of rules itself,
     // or pass in a defined ruleset. One approach is more flexible,
     // the other is more explicit and rigorous.
-    @Input() syncRules: Array<SynchronousValidationRule>;
-    @Input() asyncRules: Array<AsynchronousValidationRule>;
+    syncRules: Array<SynchronousValidationRule>;
+    asyncRules: Array<AsynchronousValidationRule>;
 
-    @Input() syncRuleSet: SynchronousValidationRuleSet;
-    @Input() asyncRuleSet: AsynchronousValidationRuleSet;
+    syncRuleSet: SynchronousValidationRuleSet;
+    asyncRuleSet: AsynchronousValidationRuleSet;
 
     @Input() hideFeedback: boolean = false;
     @Input() hideDescriptions: boolean = false;
@@ -50,13 +49,18 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     ngOnInit(): void {
-        this._initialised = true;
+        super.ngOnInit();
         this.buildDescriptions();
         this.displayDescriptions();
     }
 
     ngOnChanges(): void {
-        if(!this._initialised) return;
+        super.ngOnChanges();
+        if(this.validationControl == null) return;
+        this.validationControl.valueChanges.subscribe(() => this.valueUpdate());
+    }
+
+    valueUpdate(): void {
         this.validate().then(() => {
             if(this.shouldDisplayFeedback()) {
                 this.setErrors();
