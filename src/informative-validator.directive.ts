@@ -106,10 +106,14 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         let asyncRules = this.getAsyncRules();
         this.descriptions = new Array<string>();
         for(let rule of syncRules) {
-            this.descriptions.push(rule.getDescription());
+            if(rule.getDescription() != null) {
+                this.descriptions.push(rule.getDescription());
+            }
         }
         for(let rule of asyncRules) {
-            this.descriptions.push(rule.getDescription());
+            if(rule.getDescription() != null) {
+                this.descriptions.push(rule.getDescription());
+            }
         }
     }
 
@@ -187,9 +191,11 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         for(let rule of syncRules) {
             let ruleIsValid = rule.isValid(this.formControl);
             if(!ruleIsValid) {
-                this.feedback.push(rule.getFeedback());
+                if(rule.getFeedback() != null) {
+                    this.feedback.push(rule.getFeedback());
+                }
+                valid = false;
             }
-            valid = valid && rule.isValid(this.formControl);
         }
 
         if(!valid) { // There's no sense completing async validation if sync validation failed
@@ -206,9 +212,11 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         return Promise.all(promises).then((results) => {
             for(let key in results) {
                 if(!results[key]) {
-                    this.feedback.push(asyncRules[key].getFeedback());
+                    if(asyncRules[key].getFeedback() != null) {
+                        this.feedback.push(asyncRules[key].getFeedback());
+                    }
+                    valid = false;
                 }
-                valid = valid && results[key];
             }
 
             return new Promise((resolve) => {
