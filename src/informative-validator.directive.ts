@@ -1,5 +1,6 @@
-import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input } from '@angular/core';
+import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input, HostListener } from '@angular/core';
 import { AbstractControl, NgControl } from '@angular/forms';
+import { Observable, Subscription } from 'rxjs/Rx';
 
 import { SynchronousValidationRule, AsynchronousValidationRule,
          SynchronousValidationRuleSet, AsynchronousValidationRuleSet } from './informative-validator-rules';
@@ -12,6 +13,9 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     private _descriptionElement: any;
     private _feedbackElement: any;
     private _valid: boolean = false;
+    private _initialised: boolean = false;
+    private _typingTimer: Subscription;
+    private _validationDelay: number = 1500;
 
     // The client component can either build a list of rules itself,
     // or pass in a defined ruleset. One approach is more flexible,
@@ -25,13 +29,25 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     @Input() hideFeedback: boolean = false;
     @Input() hideDescriptions: boolean = false;
 
-    @Input() validationControl: AbstractControl;
+    @Input() formControl: AbstractControl;
 
     descriptions: Array<string>;
     feedback: Array<string>;
 
     constructor(element: ElementRef) {
         this._inputElement = element.nativeElement;
+    }
+
+    public getValidationDelay(): number {
+        return this._validationDelay;
+    }
+
+    public waitForInputFinish(callback: (result: number) => void): void{
+        let validationDelay = this.getValidationDelay();
+        if(this._typingTimer != null) {
+            this._typingTimer.unsubscribe();
+        }
+        this._typingTimer = Observable.timer(validationDelay).subscribe(callback);
     }
 
     // Should be overriden for synchronous extensions
@@ -49,19 +65,29 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     ngOnInit(): void {
-        super.ngOnInit();
         this.buildDescriptions();
         this.displayDescriptions();
+        this._initialised = true;
     }
 
     ngOnChanges(): void {
-        super.ngOnChanges();
-        if(this.validationControl == null) return;
-        this.validationControl.valueChanges.subscribe(() => this.valueUpdate());
+        if(this.formControl == null) return;
+        this.formControl.valueChanges.subscribe(() => {
+            this.waitForInputFinish((result: number) => {
+               this.valueUpdate();
+            });
+        });
+    }
+
+    @HostListener('blur') onBlur() {
+        if(this._typingTimer != null) {
+            this._typingTimer.unsubscribe();
+        }
+        this.valueUpdate();
     }
 
     valueUpdate(): void {
-        this.validate().then(() => {
+        this.validate().then((): void => {
             if(this.shouldDisplayFeedback()) {
                 this.setErrors();
             } else {
@@ -88,18 +114,19 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     setErrors(): void {
-        this.validationControl.setErrors({ "customErrors": true });
+        this.formControl.setErrors({ "customErrors": true });
         this.displayFeedback();
     }
 
     clearErrors(): void {
-        this.validationControl.setErrors({});
+        this.formControl.setErrors(null);
         this.clearFeedback();
     }
 
     clearDescriptions(): void {
         if(this._descriptionElement == null) return;
         this._descriptionElement.parentElement.removeChild(this._descriptionElement);
+        this._descriptionElement = null;
     }
 
     displayDescriptions(): void {
@@ -119,28 +146,22 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     clearFeedback(): void {
         if(this._feedbackElement == null) return;
         this._feedbackElement.parentElement.removeChild(this._feedbackElement);
+        this._feedbackElement = null;
     }
 
     shouldDisplayFeedback(): boolean {
-        if(this.feedback == null) {
-            return false;
-        }
-        if(!this._initialised) {
-            return false;
-        }
-        if(this.hideFeedback) {
-            return false;
-        }
-        if(this.validationControl.untouched) {
-            return false;
-        }
-        if(this._valid) {
-            return false;
-        }
-        return true;
+        return !(
+            (this.feedback == null) ||
+            (this.hideFeedback) ||
+            (this.formControl == null) ||
+            (this.formControl.untouched) ||
+            (this.formControl.status === 'DISABLED') ||
+            (this._valid)
+        );
     }
 
     displayFeedback(): void {
+        if(!this._initialised) return;
         this.clearFeedback();
 
         let feedbackHtml = "<ul>";
@@ -152,7 +173,7 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         this._feedbackElement = document.createElement('div');
         this._feedbackElement.className = "informative-validator-feedback";
         this._feedbackElement.innerHTML = feedbackHtml;
-        this._inputElement.parentNode.insertBefore(this._descriptionElement, this._descriptionElement.nextSibling);
+        this._inputElement.parentNode.insertBefore(this._feedbackElement, this._descriptionElement.nextSibling);
     }
 
 
@@ -164,11 +185,11 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         let valid = true;
 
         for(let rule of syncRules) {
-            let ruleIsValid = rule.isValid(this.validationControl);
+            let ruleIsValid = rule.isValid(this.formControl);
             if(!ruleIsValid) {
                 this.feedback.push(rule.getFeedback());
             }
-            valid = valid && rule.isValid(this.validationControl);
+            valid = valid && rule.isValid(this.formControl);
         }
 
         if(!valid) { // There's no sense completing async validation if sync validation failed
@@ -179,13 +200,13 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         }
 
         for(let rule of asyncRules) {
-            promises.push(rule.isValid(this.validationControl));
+            promises.push(rule.isValid(this.formControl));
         }
 
         return Promise.all(promises).then((results) => {
             for(let key in results) {
                 if(!results[key]) {
-                    this.feedback.push(asyncRules[key].getDescription());
+                    this.feedback.push(asyncRules[key].getFeedback());
                 }
                 valid = valid && results[key];
             }

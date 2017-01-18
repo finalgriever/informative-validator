@@ -1,5 +1,7 @@
 import { AbstractControl } from '@angular/forms';
 
+// Rule Interfaces
+
 export interface AsynchronousValidationRule {
     getDescription(): string;
 
@@ -22,4 +24,40 @@ export interface AsynchronousValidationRuleSet {
 
 export interface SynchronousValidationRuleSet {
     getRuleSet(): Array<SynchronousValidationRule>;
+}
+
+// Rules provided by this library
+
+export class RequiredValidationRule implements SynchronousValidationRule {
+    getDescription(): string {
+        return "This field is required";
+    }
+
+    getFeedback(): string {
+        return "You have not provided this item";
+    }
+
+    isValid(control: AbstractControl): boolean {
+        return false if(control.value == null);
+
+        var valid = true;
+        var value = control.value.toString();
+        valid = valid && control.value != null;
+        valid = valid && control.length > 0;
+        return valid;
+    }
+}
+
+export class EmailStructureValidationRule implements SynchronousValidationRule {
+    getDescription(): string {
+        return "Must be a valid Email address";
+    }
+
+    getFeedback(): string {
+        return "This email address is invalid";
+    }
+
+    isValid(control: AbstractControl): boolean {
+        return control.value.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i);
+    }
 }
