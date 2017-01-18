@@ -38,7 +38,7 @@ export class RequiredValidationRule implements SynchronousValidationRule {
     }
 
     isValid(control: AbstractControl): boolean {
-        return false if(control.value == null);
+        if(control.value == null) return false;
 
         var valid = true;
         var value = control.value.toString();
