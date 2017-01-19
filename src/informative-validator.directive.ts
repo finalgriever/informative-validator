@@ -65,13 +65,20 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     ngOnInit(): void {
+    }
+
+    initialise(): void {
         this.buildDescriptions();
         this.displayDescriptions();
-        this._initialised = true;
+        this.validate().then(():void => {
+            this._initialised = true;
+            this.valueUpdate();
+        });
     }
 
     ngOnChanges(): void {
         if(this.formControl == null) return;
+        if(!this._initialised) this.initialise();
         this.formControl.valueChanges.subscribe(() => {
             this.waitForInputFinish((result: number) => {
                this.valueUpdate();
@@ -80,6 +87,7 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     @HostListener('blur') onBlur() {
+        if(!this._initialised) return;
         if(this._typingTimer != null) {
             this._typingTimer.unsubscribe();
         }
@@ -88,15 +96,22 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
 
     valueUpdate(): void {
         this.validate().then((): void => {
-            if(this.shouldDisplayFeedback()) {
+            if(!this._valid) {
                 this.setErrors();
+            }
+            if(this.shouldDisplayFeedback()) {
+                this.displayFeedback();
             } else {
                 this.clearErrors();
+                this.clearFeedback();
             }
         });
     }
 
     ngOnDestroy(): void {
+        if(this._typingTimer != null) {
+            this._typingTimer.unsubscribe();
+        }
         this.clearFeedback();
         this.clearDescriptions();
     }
@@ -119,12 +134,10 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
 
     setErrors(): void {
         this.formControl.setErrors({ "customErrors": true });
-        this.displayFeedback();
     }
 
     clearErrors(): void {
         this.formControl.setErrors(null);
-        this.clearFeedback();
     }
 
     clearDescriptions(): void {
@@ -233,20 +246,3 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         });
     }
 }
-
-// Usage:
-// 
-// <div [informative-validator] syncRules="myListOfSyncRules" asyncRules="myListOfAsyncRules">
-//     <input type="text" />
-// </div>
-//
-// or
-//
-// <div [informative-validator] syncRuleSet="instanceOfASyncRuleset" asyncRuleSet="instanceOfAnAsyncRuleset">
-//     <input type="text" />
-// </div>
-//
-// Alternatively, see the read me on how to easily extend this directive
-// to create your own, more expressive validation directive.
-//
-// All you need is one decoration, and two functions ;)
