@@ -70,16 +70,15 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     initialise(): void {
         this.buildDescriptions();
         this.displayDescriptions();
-        this.validate().then(():void => {
-            this._initialised = true;
-            this.valueUpdate();
-        });
+        this._initialised = true;
+        this.valueUpdate();
     }
 
     ngOnChanges(): void {
         if(this.formControl == null) return;
         if(!this._initialised) this.initialise();
         this.formControl.valueChanges.subscribe(() => {
+            this.setErrors();
             this.waitForInputFinish((result: number) => {
                this.valueUpdate();
             });
@@ -96,13 +95,10 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
 
     valueUpdate(): void {
         this.validate().then((): void => {
-            if(!this._valid) {
-                this.setErrors();
-            }
+            this.setErrors();
             if(this.shouldDisplayFeedback()) {
                 this.displayFeedback();
             } else {
-                this.clearErrors();
                 this.clearFeedback();
             }
         });
@@ -133,7 +129,8 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     setErrors(): void {
-        this.formControl.setErrors({ "customErrors": true });
+        let errors = this._valid ? null : { "customErrors": true };
+        this.formControl.setErrors(errors);
     }
 
     clearErrors(): void {
