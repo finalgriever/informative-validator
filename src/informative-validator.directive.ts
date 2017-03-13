@@ -1,4 +1,4 @@
-import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input, HostListener } from '@angular/core';
+import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input, HostListener, KeyboardEvent } from '@angular/core';
 import { AbstractControl, NgControl } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs/Rx';
 
@@ -86,6 +86,14 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
     }
 
     @HostListener('blur') onBlur() {
+        if(!this._initialised) return;
+        if(this._typingTimer != null) {
+            this._typingTimer.unsubscribe();
+        }
+        this.valueUpdate();
+    }
+
+    @HostListener('keyup.enter') onKeyUp() {
         if(!this._initialised) return;
         if(this._typingTimer != null) {
             this._typingTimer.unsubscribe();
