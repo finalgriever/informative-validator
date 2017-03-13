@@ -1,4 +1,4 @@
-import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input, HostListener, KeyboardEvent } from '@angular/core';
+import { Directive, ElementRef, OnInit, OnChanges, OnDestroy, Input, HostListener } from '@angular/core';
 import { AbstractControl, NgControl } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs/Rx';
 
