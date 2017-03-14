@@ -93,7 +93,7 @@ export class InformativeValidatorDirective implements OnInit, OnChanges, OnDestr
         this.valueUpdate();
     }
 
-    @HostListener('keyup.enter') onKeyUp() {
+    @HostListener('keydown.enter') onKeyDown() {
         if(!this._initialised) return;
         if(this._typingTimer != null) {
             this._typingTimer.unsubscribe();
